@@ -1,0 +1,48 @@
+Week 1-2 Project Definition and Setup
+  - Finalizing Project idea and scope
+  - Creating the github repository and inital ReadMe.
+  - Define core problems the systen evolves
+  - Outline the high level architecture (workflow engine, database and triggers)
+  - S Draft database schemea
+Deliverables: 
+Repo Structure created
+Initial READMEe committed to gitbun
+
+Week 3-4: Core Implementation
+-Implement databse schema and access layer
+-Build core workflow execution engine
+-Support sequential actions and execution logging
+Outcome:
+- Basic workflows execute and log correctly
+
+Weeks 5-6: Workflow Triggers
+- Implement event driven workflows
+-Implement scheduled workflows
+- Validate inputs and execution flow
+Outcome: 
+Workflow trigger automatically based on events or time
+
+Weeks 7-8 Conditional Logic and Midpoint Review
+-add conditional execution logic
+-Imporve error handling and robustness
+-reafactor and clean up code
+Outcome:
+  Stable midpoint verwsion with conditional workflows
+
+Weeks 9-10
+- Implement multiple realistic example worjflows
+-Add simple CLI or minimal interface for interaction
+-Display workflow execution history
+Outcome:
+Demonstrate system with real use cases
+
+Weeks 11-12
+-Perform full system testing
+-Fix bugs and edge cases
+-Finalize README and technical documentation
+
+Weeks 13-14 Finalize
+-Final code cleanup and optimization
+-Prepare demo and presentation
+-Review rubric and finalize submission
+=
