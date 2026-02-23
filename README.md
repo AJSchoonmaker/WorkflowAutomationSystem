@@ -1,49 +1,66 @@
 # Workflow Automation and Orchestration System
 
 ## Project Overview
-This project focuses on designing and implementing a **workflow automation and orchestration system** that executes tasks automatically based on predefined rules, events, and schedules. The goal of the system is to reduce repetitive manual work by allowing users to define workflows that trigger actions when certain conditions are met.
+This project implements a rule-based workflow automation system that processes NYC 311 service request data. Each complaint is treated as an independent event that triggers a defined workflow consisting of validation, classification (processed or failed), database storage, and execution logging.
 
-Each workflow follows a simple pattern: **when an event occurs, perform a sequence of actions**. These actions may include validating data, running scripts, interacting with a database, and logging results. The system is intended to be flexible, reliable, and easy to extend with additional workflow types.
+The system simulates real-world backend automation by ingesting structured event data, applying deterministic rules, and exposing system state through a monitoring interface.
 
 ## Motivation
-Many real-world systems rely on manual or semi-manual processes to handle recurring tasks such as data processing, validation, and reporting. This project explores how automation can improve efficiency, consistency, and reliability by orchestrating these tasks through a centralized system.
+Many operational systems rely on recurring data-processing tasks such as validation, record tracking, and status reporting. These processes are often manual or loosely structured. This project explores how such tasks can be automated through a centralized workflow engine that ensures consistent execution, traceability, and reliability.
 
-The project also serves as a practical application of concepts from software engineering, databases, and backend development.
+The project emphasizes backend system design, database integration, and workflow orchestration rather than predictive analytics or frontend-heavy development.
 
 ## Core Features
-- Event-driven workflow execution
-- Scheduled workflows (time-based triggers)
-- Conditional workflow logic (continue or stop based on requirements)
-- Logging of workflow execution status (success/failure)
-- Database-backed storage for workflows and execution history
+- Event-driven workflow execution for each NYC 311 complaint
+-Deterministic validation rules (required field checks)
+-Classification of records as PROCESSED or FAILED
+-SQL-backed storage of complaint data and execution logs
+-Scheduled time-based triggers for automated processing
+-Interactive monitoring interface for viewing, filtering, and flagging complaints
+-Controlled user-submission form that feeds into the same workflow pipeline
 
 ## Example Workflows
-- When a new data file is uploaded, automatically validate the file, process its contents, and store results in a database.
-- A scheduled nightly workflow that cleans data, generates a summary report, and logs the outcome.
-- A conditional workflow that only runs if required data or resources are available.
+1. Dataset Ingestion Workflow
+When an NYC 311 CSV file is loaded:
+Each row is treated as a workflow instance.
+Required fields are validated.
+Valid records are stored in the database as PROCESSED.
+Invalid records are marked FAILED and logged with error details.
+2. Scheduled Aging Check
+On a daily trigger:
+The system identifies complaints that remain open beyond a defined time threshold.
+Matching records are flagged for review.
+Results are logged.
+3. User-Submitted Complaint Workflow
+When a user submits a complaint through the form:
+Input is validated using the same rules as dataset records.
+The complaint enters the same processing pipeline.
+Execution status is recorded in the database.
 
 ## Technology Stack
 - **Backend:** Python  
-- **Database:** SQL (e.g., SQLite or MySQL)  
+- **Database:** SQLite (local SQL storage)  
 - **Version Control:** Git / GitHub  
-- **Environment:** Local development with extensibility for future deployment
+- **Environment:** Local development
+The system is designed for local execution and testing.
 
 ## System Architecture (High-Level)
-1. An event or scheduled trigger is detected.
-2. The workflow engine evaluates the associated rules and conditions.
-3. Defined actions are executed in sequence.
-4. Results and execution status are recorded in the database.
-5. Logs are generated for monitoring and debugging.
-
+1. Complaint data is ingested (CSV input or user submission).
+2. The workflow engine validates required fields.
+3. Records are classified as PROCESSED or FAILED.
+4. Results are stored in the SQL database.
+5. Execution logs are recorded.
+6. The monitoring interface reads from the database to display system state.
+The interface is read-only for existing records and does not alter workflow logic.
 ## Project Status
-This project is currently in the **initial design and implementation phase**. Core workflow logic and database schema are being developed, with additional features planned as the project progresses.
+The core workflow engine, validation logic, and database schema are currently under implementation. The monitoring interface and scheduled triggers are being integrated in parallel.
 
 ## Future Enhancements
-- Web-based user interface for creating and managing workflows
-- Support for more complex conditional logic
-- Notification system (email or messaging alerts)
-- Improved error handling and retry mechanisms
-- Role-based access control
+-Expanded dataset compatibility beyond NYC 311
+-Additional filtering and reporting views
+-Improved scheduling configuration
+-Enhanced error reporting structure
+-Optional lightweight web-based dashboard
 
 ## Course Information
 **Course:** CPS 485 – Senior Projects  
