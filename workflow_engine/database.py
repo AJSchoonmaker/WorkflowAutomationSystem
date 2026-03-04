@@ -123,7 +123,7 @@ def insert_test_complaint():
                        "5th Ave and Main St",
                        datetime.now().isoformat(),
                        "New",
-                       0
+                       0  
                    ))
     
     conn.commit()
