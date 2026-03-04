@@ -147,3 +147,45 @@ Select * FROM complaints WHERE status = 'New';
     conn.close()
 
     return rows
+
+def update_complaint_status(complaint_id,new_status):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        Update complaints
+        set status = ?
+        Where complaint_id=?;
+        """,(new_status,complaint_id))
+    
+    conn.commit()
+    conn.close()
+
+def insert_workflow_run(workflow_id, complaint_id,status,message):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    start_time = datetime.now().isoformat()
+    end_time = datetime.now().isoformat()
+
+    cursor.execute("""
+                INSERT INTO workflow_runs(
+                   workflow_id,
+                   complaint_id,
+                   start_time,
+                   end_time,
+                   status,
+                   message
+                   )
+                   VALUES (?,?,?,?,?,?);
+                   """,(
+                       workflow_id,
+                       complaint_id,
+                       start_time,
+                       end_time,
+                       status,
+                       message
+                   ))
+    conn.commit()
+    conn.close()
