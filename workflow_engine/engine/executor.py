@@ -19,3 +19,18 @@ def execute_escalation(complaint):
         message="Auto-escalated high priority complaint"
 
     )
+
+from engine.rules import calculate_priority
+
+def process_event(event):
+
+    score, level = calculate_priority(event)
+
+    event["priority_score"] = score
+    event["priority_level"] = level
+
+    print("Event processed:")
+    print("Priority Score:", score)
+    print("Priority Level:", level)
+
+    return event
