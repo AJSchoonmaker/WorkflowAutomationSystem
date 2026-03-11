@@ -1,0 +1,14 @@
+#map {
+    height: 600px;
+    width: 100%;
+}
+
+body {
+    font-family:Arial;
+    padding: 20px;
+}
+
+#gridDisplay {
+    margin-top: 10px;
+    font-size: 18px;
+}

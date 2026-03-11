@@ -1,0 +1,70 @@
+import sqlite3
+
+DB_NAME = "workflow.db"
+
+def create_event_table():
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS events (
+       event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+       event_type TEXT,
+       borough TEXT,
+       grid_location TEXT,
+       size INTEGER,
+       quantity INTEGER,
+       priority_score INTEGER,
+       priority_level TEXT,
+       status TEXT,
+       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP 
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+def insert_event(event):
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    INSERT INTO events (
+        event_type,
+        borough,
+        grid_location,
+        size,
+        quantity,
+        priority_score,
+        priority_level,
+        status
+    )
+    VALUES (?,?,?,?,?,?,?,?)
+    """, (
+        event["event_type"],
+        event["borough"],
+        event["grid_location"],
+        event["size"],
+        event["quantity"],
+        event["priority_score"],
+        event["priority_level"],
+        "New"
+    ))
+
+    conn.commit()
+    conn.close()
+
+def get_events():
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM events")
+
+    rows = cursor.fetchall()
+
+    conn.close()
+    
+    return rows

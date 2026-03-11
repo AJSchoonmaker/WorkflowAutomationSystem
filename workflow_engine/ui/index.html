@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>NYC Infrastructure Event Reporter</title>
+
+<link
+rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<style>
+
+body{
+    font-family: Arial, Helvetica, sans-serif;
+    margin:20px;
+}
+
+#controls{
+    margin-bottom:15px;
+}
+
+#map{
+    height:600px;
+    width:100%;
+    border:2px solid black;
+}
+
+#gridDisplay{
+    margin-top:10px;
+    font-size:18px;
+}
+
+select{
+    padding:5px;
+    font-size:16px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>NYC Infrastructure Event Reporter</h2>
+
+<div id="controls">
+
+<label for="boroughSelect"><b>Select Borough:</b></label>
+
+<select id="boroughSelect">
+
+<option value="Manhattan">Manhattan</option>
+<option value="Brooklyn">Brooklyn</option>
+<option value="Queens">Queens</option>
+<option value="Bronx">Bronx</option>
+<option value="StatenIsland">Staten Island</option>
+
+</select>
+
+</div>
+
+<div id="map"></div>
+
+<div id="gridDisplay">
+
+Selected Grid:
+<span id="gridCell">None</span>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="map.js"></script>
+
+</body>
+
+</html>
