@@ -1,111 +1,242 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-const map = L.map('map',{
-    zoomControl:true,
-    minZoom:12,
-    maxZoom:16
-}).setView([40.75,-73.98],13)
+    const map = L.map('map').setView([40.75, -73.98], 13);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© OpenStreetMap'
-}).addTo(map)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
 
-let boroughLayer
-let gridLayer = L.layerGroup().addTo(map)
-let manhattanPolygon = null
+    fetch("Borough_Boundaries_20260318.geojson")
+    .then(res => res.json())
+    .then(data => {
 
-fetch("boroughs.geojson")
-.then(res=>res.json())
-.then(data=>{
+        const manhattanFeature = data.features.find(f =>
+            Object.values(f.properties).some(v =>
+                String(v).toLowerCase().includes("manhattan")
+            )
+        );
 
-boroughLayer = L.geoJSON(data,{
-    style:{
-        color:"black",
-        weight:2,
-        fillOpacity:0
-    }
-}).addTo(map)
+        const manhattanLayer = L.geoJSON(manhattanFeature, {
+            style: { color: "black", weight: 2, fillOpacity: 0 }
+        }).addTo(map);
 
-boroughLayer.eachLayer(layer=>{
-    if(layer.feature.properties.name === "Manhattan"){
-        manhattanPolygon = layer
-        let bounds = layer.getBounds()
-        map.fitBounds(bounds)
-        drawGrid(bounds)
-    }
-})
+        map.fitBounds(manhattanLayer.getBounds());
 
-})
+        let coords = manhattanFeature.geometry.coordinates;
+        let polygons = [];
 
+        if (manhattanFeature.geometry.type === "MultiPolygon") {
+            polygons = coords.map(p => p[0]);
+        } else {
+            polygons = [coords[0]];
+        }
 
-function cellIntersectsPolygon(cell, polygon){
+        function isInside(point, polygon) {
+            let x = point[1], y = point[0];
+            let inside = false;
 
-let polyPoints = polygon.getLatLngs()[0]
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                let xi = polygon[i][0], yi = polygon[i][1];
+                let xj = polygon[j][0], yj = polygon[j][1];
 
-for(let p of polyPoints){
+                let intersect =
+                    ((yi > y) !== (yj > y)) &&
+                    (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
 
-if(cell.contains(p)){
-return true
-}
+                if (intersect) inside = !inside;
+            }
 
-}
+            return inside;
+        }
 
-return polygon.getBounds().intersects(cell)
+        function isInsideAnyPolygon(point) {
+            return polygons.some(poly => isInside(point, poly));
+        }
 
-}
+        let gridCells = [];
+        let currentMode = "priority";
+        let gridVisible = true;
+        let legend;
 
+        function drawGrid() {
+            let bounds = manhattanLayer.getBounds();
+            let size = 0.004;
 
-function drawGrid(bounds){
+            for (let lat = bounds.getSouth(); lat < bounds.getNorth(); lat += size) {
+                for (let lng = bounds.getWest(); lng < bounds.getEast(); lng += size) {
 
-gridLayer.clearLayers()
+                    let center = [lat + size/2, lng + size/2];
 
-let south = bounds.getSouth()
-let north = bounds.getNorth()
-let west = bounds.getWest()
-let east = bounds.getEast()
+                    if (!isInsideAnyPolygon(center)) continue;
 
-let gridSize = 12
+                    let rect = L.rectangle([
+                        [lat, lng],
+                        [lat + size, lng + size]
+                    ], {
+                        color: "#333",
+                        weight: 0.5,
+                        fillOpacity: 0.1
+                    }).addTo(map);
 
-let latStep = (north - south)/gridSize
-let lonStep = (east - west)/gridSize
+                    gridCells.push({
+                        center,
+                        rect,
+                        complaints: 0,
+                        busyScore: 0,
+                        priority: 0
+                    });
+                }
+            }
+        }
 
-for(let i=0;i<gridSize;i++){
+        function simulateComplaints() {
+            gridCells.forEach(c => {
+                c.complaints = Math.floor(Math.random() * 20);
+            });
+        }
 
-for(let j=0;j<gridSize;j++){
+        // FIXED BUSYNESS MODEL
+        function calculateBusyness() {
+            gridCells.forEach(c => {
 
-let cellSouth = south + (i*latStep)
-let cellNorth = south + ((i+1)*latStep)
+                let lat = c.center[0];
+                let lng = c.center[1];
 
-let cellWest = west + (j*lonStep)
-let cellEast = west + ((j+1)*lonStep)
+                let score = 0;
 
-let cellBounds = L.latLngBounds(
-[cellSouth,cellWest],
-[cellNorth,cellEast]
-)
+                // Midtown hotspot
+                let midtownDist = Math.sqrt(
+                    Math.pow(lat - 40.758, 2) +
+                    Math.pow(lng + 73.985, 2)
+                );
+                score += Math.max(0, 15 - (midtownDist * 300));
 
-if(!cellIntersectsPolygon(cellBounds,manhattanPolygon)){
-continue
-}
+                // Downtown hotspot
+                let downtownDist = Math.sqrt(
+                    Math.pow(lat - 40.7128, 2) +
+                    Math.pow(lng + 74.0060, 2)
+                );
+                score += Math.max(0, 12 - (downtownDist * 300));
 
-let row = String.fromCharCode(65+i)
-let gridID = row+(j+1)
+                // West Side Highway
+                let westDist = Math.abs(lng + 74.01);
+                score += Math.max(0, 8 - (westDist * 200));
 
-let rect = L.rectangle(cellBounds,{
-color:"#3388ff",
-weight:0.7,
-opacity:0.8,
-fillOpacity:0
-})
+                // FDR Drive
+                let eastDist = Math.abs(lng + 73.97);
+                score += Math.max(0, 8 - (eastDist * 200));
 
-rect.bindTooltip(gridID)
+                c.busyScore = score;
+            });
+        }
 
-gridLayer.addLayer(rect)
+        function calculatePriority() {
+            gridCells.forEach(c => {
+                c.priority = (c.complaints * 2) + (c.busyScore * 3);
+            });
+        }
 
-}
+        function getColor(value) {
+            if (value > 60) return "#8e0000";
+            if (value > 45) return "#e74c3c";
+            if (value > 30) return "#f39c12";
+            if (value > 15) return "#f1c40f";
+            return "#2ecc71";
+        }
 
-}
+        function updateVisualization() {
+            gridCells.forEach(c => {
 
-}
+                let value =
+                    currentMode === "complaints" ? c.complaints :
+                    currentMode === "busyness" ? c.busyScore :
+                    c.priority;
 
-})
+                c.rect.setStyle({
+                    fillColor: getColor(value),
+                    fillOpacity: gridVisible ? 0.6 : 0
+                });
+
+                c.rect.bindTooltip(
+                    `Priority: ${c.priority}<br>
+                     Complaints: ${c.complaints}<br>
+                     Busyness: ${c.busyScore.toFixed(1)}`
+                );
+            });
+        }
+
+        function addControls() {
+            const control = L.control({ position: "topright" });
+
+            control.onAdd = function () {
+                const div = L.DomUtil.create("div");
+
+                div.innerHTML = `
+                    <div style="background:white;padding:10px;border-radius:8px;box-shadow:0 0 10px rgba(0,0,0,0.2);">
+                        <strong>Layers</strong><br><br>
+                        <button onclick="setMode('priority')">Priority</button><br>
+                        <button onclick="setMode('complaints')">Complaints</button><br>
+                        <button onclick="setMode('busyness')">Busyness</button><br><br>
+                        <button onclick="toggleGrid()">Toggle Grid</button>
+                    </div>
+                `;
+
+                return div;
+            };
+
+            control.addTo(map);
+        }
+
+        function addLegend() {
+
+            legend = L.control({ position: "bottomright" });
+
+            legend.onAdd = function () {
+                this._div = L.DomUtil.create("div");
+                this.update();
+                return this._div;
+            };
+
+            legend.update = function () {
+
+                let title = "Priority Levels";
+                if (currentMode === "complaints") title = "Complaint Density";
+                if (currentMode === "busyness") title = "Busyness Level";
+
+                this._div.innerHTML = `
+                    <div style="background:white;padding:10px;border-radius:8px;box-shadow:0 0 10px rgba(0,0,0,0.2);">
+                        <strong>${title}</strong><br><br>
+                        <div><span style="background:#8e0000;width:15px;height:15px;display:inline-block;margin-right:8px;"></span> Very High</div>
+                        <div><span style="background:#e74c3c;width:15px;height:15px;display:inline-block;margin-right:8px;"></span> High</div>
+                        <div><span style="background:#f39c12;width:15px;height:15px;display:inline-block;margin-right:8px;"></span> Moderate</div>
+                        <div><span style="background:#f1c40f;width:15px;height:15px;display:inline-block;margin-right:8px;"></span> Low</div>
+                        <div><span style="background:#2ecc71;width:15px;height:15px;display:inline-block;margin-right:8px;"></span> Minimal</div>
+                    </div>
+                `;
+            };
+
+            legend.addTo(map);
+        }
+
+        window.setMode = function(mode) {
+            currentMode = mode;
+            updateVisualization();
+            if (legend) legend.update();
+        };
+
+        window.toggleGrid = function() {
+            gridVisible = !gridVisible;
+            updateVisualization();
+        };
+
+        drawGrid();
+        simulateComplaints();
+        calculateBusyness();
+        calculatePriority();
+        updateVisualization();
+        addControls();
+        addLegend();
+
+    });
+
+});
