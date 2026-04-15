@@ -12,7 +12,7 @@ BOROUGH_BOUNDS = {
 
     "Brooklyn": {
         "lat_min": 40.570,
-        "lat_max": 40.740,
+        "lat_max": 40.740,      
         "lon_min": -74.050,
         "lon_max": -73.850
     },

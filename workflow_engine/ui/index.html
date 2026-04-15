@@ -3,27 +3,246 @@
 <head>
     <title>NYC Map</title>
 
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
     <style>
-        #map {
-            height: 500px;
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        #layout {
+            display: flex;
+            height: 100vh;
             width: 100%;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+
+        #side-panel {
+            width: 340px;
+            background: #f8f8f8;
+            border-left: 1px solid #ccc;
+            padding: 16px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        #side-panel h2,
+        #side-panel h3 {
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea,
+        button {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #222;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        #form-status,
+        #admin-status {
+            margin-top: 12px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        #complaint-list,
+        #zone-details {
+            margin-top: 18px;
+        }
+
+        .complaint-item,
+        .zone-complaint-item {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .complaint-item strong,
+        .zone-complaint-item strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .complaint-meta,
+        .zone-meta {
+            font-size: 13px;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        .complaint-description,
+        .zone-description {
+            font-size: 13px;
+            color: #111;
+        }
+
+        .empty-text {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .locked-note {
+            background: #fff3cd;
+            border: 1px solid #ffe69c;
+            color: #664d03;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        #admin-panel {
+            background: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        #admin-controls.hidden {
+            display: none;
+        }
+
+        .remove-btn {
+            padding: 6px 10px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .zone-summary {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 13px;
         }
     </style>
 </head>
 <body>
+<div id="layout">
+    <div id="map"></div>
 
-<h2>NYC Infrastructure Event Reporter</h2>
+    <div id="side-panel">
+        <div id="admin-panel">
+            <h2>Admin Access</h2>
 
-<div id="map"></div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="admin-password" placeholder="Enter admin password" />
+            </div>
 
-<!-- Leaflet JS -->
+            <button id="admin-login-btn">Login as Admin</button>
+            <button id="admin-logout-btn" style="display:none;">Logout</button>
+
+            <div id="admin-status">Admin controls are locked.</div>
+        </div>
+
+        <div id="admin-controls" class="hidden">
+            <h2>Add Complaint</h2>
+
+            <div class="form-group">
+                <label>Selected Grid</label>
+                <input type="text" id="selected-cell" readonly placeholder="Click a grid cell on the map" />
+            </div>
+
+            <div class="form-group">
+                <label>Category</label>
+                <select id="complaint-category">
+                    <option value="Pothole">Pothole</option>
+                    <option value="Streetlight">Streetlight</option>
+                    <option value="Damaged Sign">Damaged Sign</option>
+                    <option value="Sidewalk">Sidewalk</option>
+                    <option value="Water Leak">Water Leak</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Size / Impact</label>
+                <select id="complaint-size">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5+</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Count / Quantity</label>
+                <select id="complaint-count">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5+</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="complaint-description" rows="4" placeholder="Describe the issue..."></textarea>
+            </div>
+
+            <button id="submit-complaint">Submit Complaint</button>
+            <button id="clear-all-complaints">Clear All Complaints</button>
+
+            <div id="form-status"></div>
+        </div>
+
+        <div id="admin-locked-message" class="locked-note">
+            Complaint entry and removal are admin-only.
+        </div>
+
+        <div id="complaint-list">
+            <h3>Submitted Complaints</h3>
+            <div id="complaint-items" class="empty-text">No complaints submitted yet.</div>
+        </div>
+
+        <div id="zone-details">
+            <h3>Selected Zone Details</h3>
+            <div id="zone-details-content" class="empty-text">
+                Click a grid cell to view all complaints in that zone.
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-<!-- YOUR SCRIPT -->
 <script src="map.js"></script>
-
 </body>
 </html>
