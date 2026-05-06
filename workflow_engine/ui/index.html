@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>NYC Map</title>
+    <title>NYC Infrastructure Workflow System</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
@@ -11,31 +11,148 @@
             padding: 0;
             height: 100%;
             font-family: Arial, sans-serif;
+            background: #eef1f5;
+            color: #1f2933;
+            overflow: hidden;
+        }
+
+        #app-header {
+            height: 64px;
+            background: #111827;
+            color: white;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 20px;
+            padding: 0 24px;
+            box-sizing: border-box;
+        }
+
+        #app-header h1 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        #top-admin-panel {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #top-admin-panel input {
+            width: 190px;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        #top-admin-panel button {
+            width: auto;
+            margin: 0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #2563eb;
+        }
+
+        #top-admin-panel button:hover {
+            background: #1d4ed8;
+        }
+
+        #admin-status {
+            font-size: 13px;
+            font-weight: bold;
+            color: #cbd5e1;
+            min-width: 150px;
         }
 
         #layout {
+            display: grid;
+            grid-template-columns: 330px minmax(520px, 1fr) 360px;
+            height: calc(100vh - 64px);
+            gap: 18px;
+            padding: 18px;
+            box-sizing: border-box;
+        }
+
+        #left-panel,
+        #right-panel {
+            overflow-y: auto;
             display: flex;
-            height: 100vh;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        #map-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #map-card {
             width: 100%;
+            height: 82vh;
+            background: white;
+            border: 1px solid #d6dce5;
+            border-radius: 18px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map-card-header {
+            height: 54px;
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            box-sizing: border-box;
+        }
+
+        #map-card-header h2 {
+            margin: 0;
+            font-size: 16px;
+            color: #111827;
+        }
+
+        #map-card-header span {
+            font-size: 12px;
+            color: #6b7280;
         }
 
         #map {
             flex: 1;
-            height: 100%;
+            width: 100%;
         }
 
-        #side-panel {
-            width: 340px;
-            background: #f8f8f8;
-            border-left: 1px solid #ccc;
-            padding: 16px;
-            box-sizing: border-box;
-            overflow-y: auto;
+        .panel-card,
+        #admin-controls {
+            background: white;
+            border: 1px solid #dce3ec;
+            border-radius: 14px;
+            padding: 14px;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
         }
 
-        #side-panel h2,
-        #side-panel h3 {
+        .panel-card h2,
+        .panel-card h3,
+        #admin-controls h2,
+        #admin-controls h3 {
             margin-top: 0;
+            color: #111827;
+        }
+
+        .panel-card h2,
+        #admin-controls h2 {
+            font-size: 18px;
+        }
+
+        .panel-card h3,
+        #admin-controls h3 {
+            font-size: 15px;
+            margin-bottom: 10px;
         }
 
         .form-group {
@@ -46,6 +163,8 @@
             display: block;
             font-weight: bold;
             margin-bottom: 6px;
+            font-size: 13px;
+            color: #374151;
         }
 
         .form-group input,
@@ -54,41 +173,56 @@
         button {
             width: 100%;
             box-sizing: border-box;
-            padding: 8px;
+            padding: 9px 10px;
             font-size: 14px;
+            border-radius: 8px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            border: 1px solid #cbd5e1;
+            background: white;
         }
 
         button {
-            background: #222;
+            background: #111827;
             color: white;
             border: none;
             cursor: pointer;
             margin-top: 8px;
+            font-weight: bold;
         }
 
         button:hover {
-            background: #444;
+            background: #374151;
         }
 
-        #form-status,
-        #admin-status {
+        #form-status {
             margin-top: 12px;
             font-size: 14px;
             font-weight: bold;
         }
 
-        #complaint-list,
-        #zone-details,
-        #search-panel {
-            margin-top: 18px;
+        #admin-controls.hidden {
+            display: none;
+        }
+
+        .locked-note {
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #7c2d12;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 14px;
         }
 
         .complaint-item,
         .zone-complaint-item,
         .search-result-item {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            background: #ffffff;
+            border: 1px solid #e1e7ef;
+            border-radius: 10px;
             padding: 10px;
             margin-bottom: 10px;
         }
@@ -104,86 +238,185 @@
         .zone-meta,
         .search-meta {
             font-size: 13px;
-            color: #333;
+            color: #374151;
             margin-bottom: 6px;
+            line-height: 1.35;
         }
 
         .complaint-description,
         .zone-description,
         .search-description {
             font-size: 13px;
-            color: #111;
+            color: #111827;
+            line-height: 1.35;
         }
 
         .empty-text {
-            color: #666;
+            color: #6b7280;
             font-size: 14px;
-        }
-
-        .locked-note {
-            background: #fff3cd;
-            border: 1px solid #ffe69c;
-            color: #664d03;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 12px;
-            font-size: 14px;
-        }
-
-        #admin-panel {
-            background: #ffffff;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 16px;
-        }
-
-        #admin-controls.hidden {
-            display: none;
         }
 
         .remove-btn {
-            padding: 6px 10px;
+            padding: 7px 10px;
             cursor: pointer;
             margin-top: 8px;
+            background: #991b1b;
+        }
+
+        .remove-btn:hover {
+            background: #7f1d1d;
         }
 
         .zone-summary {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #dce3ec;
+            border-radius: 10px;
             padding: 10px;
             margin-bottom: 10px;
             font-size: 13px;
+            line-height: 1.35;
         }
 
         hr {
             margin-top: 18px;
             margin-bottom: 18px;
+            border: none;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .demo-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8fafc;
+            border: 1px solid #dce3ec;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 14px;
+        }
+
+        #demo-mode-status {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 28px;
+            flex-shrink: 0;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #cbd5e1;
+            transition: 0.3s;
+            border-radius: 28px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2f80ed;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .leaflet-control button {
+            border-radius: 6px;
+            padding: 7px;
+            font-size: 13px;
         }
     </style>
 </head>
 <body>
-<div id="layout">
-    <div id="map"></div>
 
-    <div id="side-panel">
-        <div id="admin-panel">
-            <h2>Admin Access</h2>
+<header id="app-header">
+    <h1>NYC Infrastructure Workflow Automation System</h1>
+
+    <div id="top-admin-panel">
+        <input type="password" id="admin-password" placeholder="Admin password" />
+        <button id="admin-login-btn">Login</button>
+        <button id="admin-logout-btn" style="display:none;">Logout</button>
+        <div id="admin-status">Admin controls are locked.</div>
+    </div>
+</header>
+
+<div id="layout">
+    <aside id="left-panel">
+        <div id="search-panel" class="panel-card">
+            <h3>Search Complaints</h3>
 
             <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="admin-password" placeholder="Enter admin password" />
+                <input
+                    type="text"
+                    id="search-input"
+                    placeholder="Search type, description, or grid..."
+                />
             </div>
 
-            <button id="admin-login-btn">Login as Admin</button>
-            <button id="admin-logout-btn" style="display:none;">Logout</button>
+            <button id="search-button">Search</button>
+            <button id="clear-search-button">Clear Search</button>
 
-            <div id="admin-status">Admin controls are locked.</div>
+            <div id="search-results" class="empty-text">
+                No search active.
+            </div>
         </div>
 
+        <div id="complaint-list" class="panel-card">
+            <h3>Submitted Complaints</h3>
+            <div id="complaint-items" class="empty-text">
+                No complaints submitted yet.
+            </div>
+        </div>
+    </aside>
+
+    <main id="map-area">
+        <section id="map-card">
+            <div id="map-card-header">
+                <h2>Manhattan Infrastructure Grid</h2>
+                <span>Interactive priority map</span>
+            </div>
+
+            <div id="map"></div>
+        </section>
+    </main>
+
+    <aside id="right-panel">
         <div id="admin-controls" class="hidden">
             <h2>Add Complaint</h2>
+
+            <h3>Demo Mode</h3>
+            <div class="demo-toggle-row">
+                <label class="switch">
+                    <input type="checkbox" id="demo-mode-toggle">
+                    <span class="slider"></span>
+                </label>
+
+                <span id="demo-mode-status">Demo Mode Disabled</span>
+            </div>
 
             <div class="form-group">
                 <label>Selected Grid</label>
@@ -256,39 +489,13 @@
             Complaint entry and removal are admin-only.
         </div>
 
-        <div id="search-panel">
-            <h3>Search Complaints</h3>
-
-            <div class="form-group">
-                <input
-                    type="text"
-                    id="search-input"
-                    placeholder="Search by type, description, or grid..."
-                />
-            </div>
-
-            <button id="search-button">Search</button>
-            <button id="clear-search-button">Clear Search</button>
-
-            <div id="search-results" class="empty-text">
-                No search active.
-            </div>
-        </div>
-
-        <div id="complaint-list">
-            <h3>Submitted Complaints</h3>
-            <div id="complaint-items" class="empty-text">
-                No complaints submitted yet.
-            </div>
-        </div>
-
-        <div id="zone-details">
+        <div id="zone-details" class="panel-card">
             <h3>Selected Zone Details</h3>
             <div id="zone-details-content" class="empty-text">
                 Click a grid cell to view all complaints in that zone.
             </div>
         </div>
-    </div>
+    </aside>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
