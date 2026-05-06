@@ -16,6 +16,25 @@ document.addEventListener("DOMContentLoaded", function () {
     let gridCells = [];
     let savedComplaints = [];
     let isAdmin = false;
+    let activeSearchTerm = "";
+
+    function formatTimestamp(timestamp) {
+        if (!timestamp) return "Unknown Date";
+
+        const date = new Date(timestamp);
+
+        if (isNaN(date.getTime())) {
+            return "Unknown Date";
+        }
+
+        return date.toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit"
+        });
+    }
 
     function loadSavedComplaints() {
         try {
@@ -74,6 +93,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         renderComplaintList();
         renderSelectedZoneDetails();
+        renderSearchResults();
     }
 
     function loginAdmin() {
@@ -282,16 +302,71 @@ document.addEventListener("DOMContentLoaded", function () {
             .join("<br>");
     }
 
+    function complaintMatchesSearch(cell, complaint, searchTerm) {
+        const normalizedSearch = searchTerm.toLowerCase().trim();
+
+        if (!normalizedSearch) {
+            return false;
+        }
+
+        const category = String(complaint.category || "").toLowerCase();
+        const description = String(complaint.description || "").toLowerCase();
+        const cellId = String(cell.id || "").toLowerCase();
+        const size = String(complaint.size || "").toLowerCase();
+        const quantity = String(complaint.quantity || "").toLowerCase();
+        const score = String(complaint.score || "").toLowerCase();
+        const submitted = formatTimestamp(complaint.submittedAt).toLowerCase();
+
+        return (
+            category.includes(normalizedSearch) ||
+            description.includes(normalizedSearch) ||
+            cellId.includes(normalizedSearch) ||
+            size.includes(normalizedSearch) ||
+            quantity.includes(normalizedSearch) ||
+            score.includes(normalizedSearch) ||
+            submitted.includes(normalizedSearch)
+        );
+    }
+
+    function getSearchMatches() {
+        const matches = [];
+
+        if (!activeSearchTerm.trim()) {
+            return matches;
+        }
+
+        gridCells.forEach(cell => {
+            cell.userComplaints.forEach(complaint => {
+                if (complaintMatchesSearch(cell, complaint, activeSearchTerm)) {
+                    matches.push({
+                        cell,
+                        complaint
+                    });
+                }
+            });
+        });
+
+        return matches;
+    }
+
     function updateVisualization() {
+        const searchMatches = getSearchMatches();
+        const matchingCellIds = new Set(searchMatches.map(match => match.cell.id));
+
         gridCells.forEach(c => {
             let value =
                 currentMode === "complaints" ? c.complaints :
                 currentMode === "busyness" ? c.busyScore :
                 c.priority;
 
+            const isSearchMatch = activeSearchTerm.trim() && matchingCellIds.has(c.id);
+            const isSelectedCell = selectedCell && selectedCell.id === c.id;
+
             c.rect.setStyle({
-                fillColor: getColor(value),
-                fillOpacity: gridVisible ? 0.6 : 0
+                fillColor: isSearchMatch ? "#2f80ed" : getColor(value),
+                fillOpacity: gridVisible ? (isSearchMatch ? 0.85 : 0.6) : 0,
+                color: isSelectedCell ? "#003cff" : (isSearchMatch ? "#0057c2" : "#333"),
+                weight: isSelectedCell ? 3 : (isSearchMatch ? 2.5 : 0.5)
             });
 
             c.rect.bindTooltip(
@@ -311,6 +386,7 @@ document.addEventListener("DOMContentLoaded", function () {
         updateVisualization();
         renderComplaintList();
         renderSelectedZoneDetails();
+        renderSearchResults();
         if (legend) legend.update();
         saveComplaintsToStorage();
     }
@@ -339,6 +415,76 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function clearSelectedZone() {
+        if (!isAdmin) return;
+
+        const statusEl = document.getElementById("form-status");
+
+        if (!selectedCell) {
+            if (statusEl) {
+                statusEl.textContent = "Please click a grid cell before clearing a zone.";
+            }
+            return;
+        }
+
+        const clearTypeSelect = document.getElementById("clear-zone-type");
+        const selectedType = clearTypeSelect ? clearTypeSelect.value : "ALL";
+
+        if (selectedCell.userComplaints.length === 0) {
+            if (statusEl) {
+                statusEl.textContent = selectedCell.id + " already has no complaints.";
+            }
+            return;
+        }
+
+        let matchingCount = selectedCell.userComplaints.length;
+
+        if (selectedType !== "ALL") {
+            matchingCount = selectedCell.userComplaints.filter(complaint =>
+                complaint.category === selectedType
+            ).length;
+        }
+
+        if (matchingCount === 0) {
+            if (statusEl) {
+                statusEl.textContent = "No " + selectedType + " complaints found in " + selectedCell.id + ".";
+            }
+            return;
+        }
+
+        const clearMessage = selectedType === "ALL"
+            ? "Are you sure you want to clear all complaints from " + selectedCell.id + "?"
+            : "Are you sure you want to clear all " + selectedType + " complaints from " + selectedCell.id + "?";
+
+        const firstCheck = confirm(clearMessage);
+        if (!firstCheck) return;
+
+        const secondMessage = selectedType === "ALL"
+            ? "This will permanently remove " + matchingCount + " complaint(s) from this zone. Continue?"
+            : "This will permanently remove " + matchingCount + " " + selectedType + " complaint(s) from this zone. Continue?";
+
+        const secondCheck = confirm(secondMessage);
+        if (!secondCheck) return;
+
+        if (selectedType === "ALL") {
+            selectedCell.userComplaints = [];
+        } else {
+            selectedCell.userComplaints = selectedCell.userComplaints.filter(complaint =>
+                complaint.category !== selectedType
+            );
+        }
+
+        refreshAll();
+
+        if (statusEl) {
+            if (selectedType === "ALL") {
+                statusEl.textContent = "Cleared " + matchingCount + " complaint(s) from " + selectedCell.id + ".";
+            } else {
+                statusEl.textContent = "Cleared " + matchingCount + " " + selectedType + " complaint(s) from " + selectedCell.id + ".";
+            }
+        }
+    }
+
     function removeComplaintById(complaintId) {
         if (!isAdmin) return;
 
@@ -361,39 +507,146 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    function renderComplaintList() {
-        const container = document.getElementById("complaint-items");
-        if (!container) return;
+    function runSearch() {
+        const searchInput = document.getElementById("search-input");
+        const searchValue = searchInput ? searchInput.value.trim() : "";
 
-        let allComplaints = [];
+        activeSearchTerm = searchValue;
 
-        gridCells.forEach(cell => {
-            cell.userComplaints.forEach(complaint => {
-                allComplaints.push({
-                    ...complaint,
-                    cellId: cell.id
-                });
-            });
+        updateVisualization();
+        renderSearchResults();
+    }
+
+    function clearSearch() {
+        const searchInput = document.getElementById("search-input");
+
+        if (searchInput) {
+            searchInput.value = "";
+        }
+
+        activeSearchTerm = "";
+
+        updateVisualization();
+        renderSearchResults();
+    }
+
+    function selectSearchResultCell(cellId) {
+        const foundCell = gridCells.find(cell => cell.id === cellId);
+        if (!foundCell) return;
+
+        selectedCell = foundCell;
+
+        const selectedCellInput = document.getElementById("selected-cell");
+        const formStatus = document.getElementById("form-status");
+
+        if (selectedCellInput) {
+            selectedCellInput.value = foundCell.id;
+        }
+
+        if (formStatus && isAdmin) {
+            formStatus.textContent = "Selected " + foundCell.id;
+        }
+
+        updateVisualization();
+
+        map.flyTo(foundCell.center, 16, {
+            duration: 1.2
         });
 
-        if (allComplaints.length === 0) {
+        setTimeout(function () {
+            foundCell.rect.openTooltip();
+        }, 700);
+
+        renderComplaintList();
+        renderSelectedZoneDetails();
+    }
+
+    function renderSearchResults() {
+        const container = document.getElementById("search-results");
+        if (!container) return;
+
+        if (!activeSearchTerm.trim()) {
             container.className = "empty-text";
-            container.innerHTML = "No complaints submitted yet.";
+            container.innerHTML = "No search active.";
+            return;
+        }
+
+        const matches = getSearchMatches();
+
+        if (matches.length === 0) {
+            container.className = "empty-text";
+            container.innerHTML = "No matches found for \"" + activeSearchTerm + "\".";
             return;
         }
 
         container.className = "";
-        container.innerHTML = allComplaints
+        container.innerHTML = `
+            <div class="empty-text" style="margin-bottom:10px;">
+                Found ${matches.length} result(s) for "${activeSearchTerm}".
+            </div>
+            ${matches.map(match => `
+                <div class="search-result-item">
+                    <strong>${match.complaint.category}</strong>
+                    <div class="search-meta">
+                        Grid: ${match.cell.id}<br>
+                        Size: ${match.complaint.size}<br>
+                        Quantity: ${match.complaint.quantity}<br>
+                        Score: ${match.complaint.score}<br>
+                        Submitted: ${formatTimestamp(match.complaint.submittedAt)}
+                    </div>
+                    <div class="search-description" style="margin-bottom:8px;">
+                        ${match.complaint.description ? match.complaint.description : "No description provided."}
+                    </div>
+                    <button class="go-to-search-cell" data-cell-id="${match.cell.id}">
+                        View This Zone
+                    </button>
+                </div>
+            `).join("")}
+        `;
+
+        container.querySelectorAll(".go-to-search-cell").forEach(button => {
+            button.addEventListener("click", function () {
+                const cellId = this.getAttribute("data-cell-id");
+                selectSearchResultCell(cellId);
+            });
+        });
+    }
+
+    function renderComplaintList() {
+        const container = document.getElementById("complaint-items");
+        const complaintListTitle = document.querySelector("#complaint-list h3");
+
+        if (!container) return;
+
+        if (complaintListTitle) {
+            complaintListTitle.textContent = "Complaints in Selected Zone";
+        }
+
+        if (!selectedCell) {
+            container.className = "empty-text";
+            container.innerHTML = "Click a grid cell to show only the complaints in that zone.";
+            return;
+        }
+
+        if (selectedCell.userComplaints.length === 0) {
+            container.className = "empty-text";
+            container.innerHTML = "No complaints found in " + selectedCell.id + ".";
+            return;
+        }
+
+        container.className = "";
+        container.innerHTML = selectedCell.userComplaints
             .slice()
             .reverse()
             .map(complaint => `
                 <div class="complaint-item">
                     <strong>${complaint.category}</strong>
                     <div class="complaint-meta">
-                        Grid: ${complaint.cellId}<br>
+                        Grid: ${selectedCell.id}<br>
                         Size: ${complaint.size}<br>
                         Quantity: ${complaint.quantity}<br>
-                        Score: ${complaint.score}
+                        Score: ${complaint.score}<br>
+                        Submitted: ${formatTimestamp(complaint.submittedAt)}
                     </div>
                     <div class="complaint-description" style="margin-bottom:8px;">
                         ${complaint.description ? complaint.description : "No description provided."}
@@ -467,7 +720,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div class="zone-meta">
                         Size: ${complaint.size}<br>
                         Quantity: ${complaint.quantity}<br>
-                        Score: ${complaint.score}
+                        Score: ${complaint.score}<br>
+                        Submitted: ${formatTimestamp(complaint.submittedAt)}
                     </div>
                     <div class="zone-description">
                         ${complaint.description ? complaint.description : "No description provided."}
@@ -582,6 +836,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 size: savedComplaint.size || 1,
                 quantity: savedComplaint.quantity || 1,
                 description: savedComplaint.description || "",
+                submittedAt: savedComplaint.submittedAt || new Date().toISOString(),
                 score: 0
             });
         });
@@ -685,6 +940,8 @@ document.addEventListener("DOMContentLoaded", function () {
                                 formStatus.textContent = "Selected " + gridCell.id;
                             }
 
+                            updateVisualization();
+                            renderComplaintList();
                             renderSelectedZoneDetails();
                         });
 
@@ -707,6 +964,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const submitButton = document.getElementById("submit-complaint");
             const clearAllButton = document.getElementById("clear-all-complaints");
+            const clearSelectedZoneButton = document.getElementById("clear-selected-zone");
+            const searchButton = document.getElementById("search-button");
+            const clearSearchButton = document.getElementById("clear-search-button");
+            const searchInput = document.getElementById("search-input");
             const loginBtn = document.getElementById("admin-login-btn");
             const logoutBtn = document.getElementById("admin-logout-btn");
             const passwordInput = document.getElementById("admin-password");
@@ -730,6 +991,32 @@ document.addEventListener("DOMContentLoaded", function () {
             if (clearAllButton) {
                 clearAllButton.addEventListener("click", function () {
                     clearAllComplaints();
+                });
+            }
+
+            if (clearSelectedZoneButton) {
+                clearSelectedZoneButton.addEventListener("click", function () {
+                    clearSelectedZone();
+                });
+            }
+
+            if (searchButton) {
+                searchButton.addEventListener("click", function () {
+                    runSearch();
+                });
+            }
+
+            if (clearSearchButton) {
+                clearSearchButton.addEventListener("click", function () {
+                    clearSearch();
+                });
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener("keydown", function (event) {
+                    if (event.key === "Enter") {
+                        runSearch();
+                    }
                 });
             }
 
@@ -762,6 +1049,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         size,
                         quantity,
                         description,
+                        submittedAt: new Date().toISOString(),
                         score: 0
                     };
 
@@ -788,7 +1076,9 @@ document.addEventListener("DOMContentLoaded", function () {
             addControls();
             addLegend();
             updateAdminUI();
+            renderComplaintList();
             renderSelectedZoneDetails();
+            renderSearchResults();
         })
         .catch(error => {
             console.error("Error loading GeoJSON:", error);

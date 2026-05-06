@@ -78,12 +78,14 @@
         }
 
         #complaint-list,
-        #zone-details {
+        #zone-details,
+        #search-panel {
             margin-top: 18px;
         }
 
         .complaint-item,
-        .zone-complaint-item {
+        .zone-complaint-item,
+        .search-result-item {
             background: white;
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -92,20 +94,23 @@
         }
 
         .complaint-item strong,
-        .zone-complaint-item strong {
+        .zone-complaint-item strong,
+        .search-result-item strong {
             display: block;
             margin-bottom: 6px;
         }
 
         .complaint-meta,
-        .zone-meta {
+        .zone-meta,
+        .search-meta {
             font-size: 13px;
             color: #333;
             margin-bottom: 6px;
         }
 
         .complaint-description,
-        .zone-description {
+        .zone-description,
+        .search-description {
             font-size: 13px;
             color: #111;
         }
@@ -150,6 +155,11 @@
             padding: 10px;
             margin-bottom: 10px;
             font-size: 13px;
+        }
+
+        hr {
+            margin-top: 18px;
+            margin-bottom: 18px;
         }
     </style>
 </head>
@@ -221,6 +231,24 @@
             <button id="submit-complaint">Submit Complaint</button>
             <button id="clear-all-complaints">Clear All Complaints</button>
 
+            <hr>
+
+            <h3>Clear Selected Zone</h3>
+
+            <div class="form-group">
+                <label>Problem Type to Clear</label>
+                <select id="clear-zone-type">
+                    <option value="ALL">All Types</option>
+                    <option value="Pothole">Pothole</option>
+                    <option value="Streetlight">Streetlight</option>
+                    <option value="Damaged Sign">Damaged Sign</option>
+                    <option value="Sidewalk">Sidewalk</option>
+                    <option value="Water Leak">Water Leak</option>
+                </select>
+            </div>
+
+            <button id="clear-selected-zone">Clear Selected Zone</button>
+
             <div id="form-status"></div>
         </div>
 
@@ -228,9 +256,30 @@
             Complaint entry and removal are admin-only.
         </div>
 
+        <div id="search-panel">
+            <h3>Search Complaints</h3>
+
+            <div class="form-group">
+                <input
+                    type="text"
+                    id="search-input"
+                    placeholder="Search by type, description, or grid..."
+                />
+            </div>
+
+            <button id="search-button">Search</button>
+            <button id="clear-search-button">Clear Search</button>
+
+            <div id="search-results" class="empty-text">
+                No search active.
+            </div>
+        </div>
+
         <div id="complaint-list">
             <h3>Submitted Complaints</h3>
-            <div id="complaint-items" class="empty-text">No complaints submitted yet.</div>
+            <div id="complaint-items" class="empty-text">
+                No complaints submitted yet.
+            </div>
         </div>
 
         <div id="zone-details">
@@ -243,6 +292,13 @@
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script src="storage.js"></script>
+<script src="complaints.js"></script>
+<script src="visualization.js"></script>
+<script src="admin.js"></script>
+<script src="grid.js"></script>
 <script src="map.js"></script>
+
 </body>
 </html>
